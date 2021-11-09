@@ -116,7 +116,8 @@ class Spro_Public {
 		?>
 	
 		<h2>My Subscriptions</h2>
-	
+		<a href="https://kerstinflorian.com/auto-replenish-faq/" style="display: block; text-decoration: underline; font-size: 18px;" target="_blank">Auto Replenish FAQ</a>
+
 		<div class="content">
 			<!-- My Subscriptions Widget div goes in main body of page -->
 			<div id="sp-my-subscriptions"></div>
