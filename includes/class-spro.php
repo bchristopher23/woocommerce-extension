@@ -197,8 +197,10 @@ class Spro {
 		$this->loader->add_action( 'wp_ajax_nopriv_save_connection_credentials', $plugin_admin, 'spro_save_connection_credentials' );
 		$this->loader->add_action( 'wp_ajax_save_connection_credentials', $plugin_admin, 'spro_save_connection_credentials' );
 
-		// Clear Product Cache On Product Save
-		$this->loader->add_action( 'save_post_product', $plugin_admin, 'spro_clear_product_cache' );
+		// Clear Product Cache and Create SP Product on Save
+		$this->loader->add_action( 'save_post_product', $plugin_admin, 'spro_update_product_on_save' );
+		$this->loader->add_action( 'admin_notices', $plugin_admin, 'spro_admin_notices' );
+
 
 	}
 

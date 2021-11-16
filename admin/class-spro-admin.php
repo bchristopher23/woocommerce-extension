@@ -66,6 +66,7 @@ class Spro_Admin {
 		return $tabs;
 	}
 
+
 	/**
 	 * Add Custom Fields to the Subscribe Pro Tab on WooCommerce Products
 	 * 
@@ -98,6 +99,7 @@ class Spro_Admin {
 	public function spro_save_subscription_options_field( $post_id ) {
 
 		$spro_checkbox = isset( $_POST['_spro_product'] ) ? 'yes' : 'no';
+
 		update_post_meta( $post_id, '_spro_product', $spro_checkbox );
 	
 	}
@@ -256,7 +258,7 @@ class Spro_Admin {
 	 * 
 	 * @since 1.0.0
 	 */
-	public function spro_clear_product_cache( $product_id ) {
+	public function spro_update_product_on_save( $product_id ) {
 
 		global $post;
 
@@ -265,8 +267,173 @@ class Spro_Admin {
 			return;
 		}
 
-		delete_transient( $product_id . '_spro_product' );
+		$spro_product = get_post_meta( $product_id, '_spro_product', true);
 
+		if ( $spro_product ) {
+
+			// Clear product cache
+			delete_transient( $product_id . '_spro_product' );
+
+			// Check if product exists within Subscribe Pro
+			$product = wc_get_product( $product_id );
+			$sku = '';
+
+			if ( isset( $_POST['_sku'] ) ) {
+				$sku = $_POST['_sku'];
+			}
+
+			$client = new Client();
+			$access_token = $this->spro_get_access_token();
+
+			$response = $client->get( SPRO_BASE_URL . '/services/v2/products.json?sku=' . $sku, [
+				'verify' => false,
+				'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+			]);
+			
+			$response_body = json_decode( $response->getBody() );
+
+			// If product does not exist, create product
+			if ( empty( $response_body->products ) ) {
+
+				$name = get_the_title( $product_id );
+				$price = $product->get_price();
+
+				$data = array(
+					'access_token' => $access_token,
+					'product' => array(
+						'sku' => $sku,
+						'name' => $name,
+						'price' => $price
+					)
+				);
+
+				try {
+
+					$response = $client->request(
+						'POST',
+						SPRO_BASE_URL . '/services/v2/product.json',
+						[
+							'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+							'verify' => false,
+							'json' => ['product' =>
+								array(
+									'sku' => $sku,
+									'name' => $name,
+									'price' => $price
+								)
+							]
+						]
+					);
+			
+					$response_body = json_decode( $response->getBody() );
+
+					session_start();
+
+					$_SESSION['admin_message'] = array(
+						'type' => 'updated',
+						'message' => 'Successfully created product #' . $response_body->product->id,
+					);
+	
+				} catch (RequestException $e) {
+
+					session_start();
+
+					$_SESSION['admin_message'] = array(
+						'type' => 'error',
+						'message' => $e->getMessage()
+					);
+
+					add_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
+
+				}
+		
+
+
+			}
+
+		}
+
+	}
+
+	/**
+	 * Retrieves Access Token
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_get_access_token() {
+
+		// delete_transient( 'spro_access_token' );
+
+		if ( false === ( $value = get_transient( 'spro_access_token' ) ) ) {
+			
+			$client = new Client();
+
+			$data = array(
+				'grant_type' => 'client_credentials',
+				'scope' => 'client',
+			);
+
+			try {
+				
+				$response = $client->request(
+					'GET',
+					SPRO_BASE_URL . '/oauth/v2/token',
+					[
+					'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+					'verify' => false,
+					'query' => http_build_query($data)
+					]
+				);
+
+			} catch (RequestException $e) {
+				echo Psr7\Message::toString($e->getRequest());
+				if ($e->hasResponse()) {
+					echo Psr7\Message::toString($e->getResponse());
+				}
+			}
+
+			$access_token = json_decode( $response->getBody() )->access_token;
+	
+			set_transient( 'spro_access_token', $access_token, HOUR_IN_SECONDS );
+
+		}
+
+		return get_transient( 'spro_access_token' );
+
+	}
+
+	/**
+	 * Add query var for admin notices
+	 * 
+	 * @since 1.0.0
+	 */
+	public function add_notice_query_var( $location ) {
+		remove_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
+		session_start();
+		return add_query_arg( array( 'admin_message' => $_SESSION['admin_message'] ), $location );
+	}
+
+	/**
+	 * Display admin notices
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_admin_notices() {
+
+		session_start();
+
+		if ( ! isset( $_SESSION['admin_message'] ) ) {
+			return;
+		}
+
+		?>
+		  	<div class="<?php echo esc_html_e( $_SESSION['admin_message']['type'], 'spro' ); ?>">
+			<p><?php esc_html_e( $_SESSION['admin_message']['message'], 'spro' ); ?></p>
+		  </div>
+
+		<?php
+
+		unset( $_SESSION['admin_message'] );
 	}
 
 }
