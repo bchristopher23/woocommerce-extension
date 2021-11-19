@@ -254,28 +254,26 @@ class Spro_Admin {
 	}
 
 	/**
-	 * Clears Product Data Cache on Product Save
+	 * Clears Product Data Cache on Product Save and Creates Subscribe Pro Product if it doesn't exist
 	 * 
 	 * @since 1.0.0
 	 */
-	public function spro_update_product_on_save( $product_id ) {
+	public function spro_update_product_on_save( $post_id, $post, $update ) {
+		
+		if ( $post->post_status == 'auto-draft' || $post->post_status == 'draft' || $post->post_type != 'product' ) {
 
-		global $post;
-
-		// Don't run if product isn't published or doesn't exist
-		if ( $post->post_type != 'product' ) {
 			return;
 		}
 
-		$spro_product = get_post_meta( $product_id, '_spro_product', true);
+		$spro_product = get_post_meta( $post_id, '_spro_product', true);
 
-		if ( $spro_product ) {
+		if ( $spro_product == 'yes' ) {
 
 			// Clear product cache
-			delete_transient( $product_id . '_spro_product' );
+			delete_transient( $post_id . '_spro_product' );
 
 			// Check if product exists within Subscribe Pro
-			$product = wc_get_product( $product_id );
+			$product = wc_get_product( $post_id );
 			$sku = '';
 
 			if ( isset( $_POST['_sku'] ) ) {
@@ -295,7 +293,7 @@ class Spro_Admin {
 			// If product does not exist, create product
 			if ( empty( $response_body->products ) ) {
 
-				$name = get_the_title( $product_id );
+				$name = get_the_title( $post_id );
 				$price = $product->get_price();
 
 				$data = array(
@@ -346,8 +344,6 @@ class Spro_Admin {
 					add_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
 
 				}
-		
-
 
 			}
 
