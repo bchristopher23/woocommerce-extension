@@ -201,6 +201,9 @@ class Spro {
 		$this->loader->add_action( 'save_post', $plugin_admin, 'spro_update_product_on_save', 10, 3 );
 		$this->loader->add_action( 'admin_notices', $plugin_admin, 'spro_admin_notices' );
 
+		// Add Bulk Edit Fields
+		$this->loader->add_action( 'woocommerce_product_bulk_edit_start', $plugin_admin, 'spro_bulk_edit_fields' );
+		$this->loader->add_action( 'woocommerce_product_bulk_edit_save', $plugin_admin, 'spro_bulk_edit_save' );
 
 	}
 

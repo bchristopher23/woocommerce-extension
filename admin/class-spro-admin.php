@@ -261,7 +261,6 @@ class Spro_Admin {
 	public function spro_update_product_on_save( $post_id, $post, $update ) {
 		
 		if ( $post->post_status == 'auto-draft' || $post->post_status == 'draft' || $post->post_type != 'product' ) {
-
 			return;
 		}
 
@@ -280,71 +279,11 @@ class Spro_Admin {
 				$sku = $_POST['_sku'];
 			}
 
-			$client = new Client();
-			$access_token = $this->spro_get_access_token();
+			// Check if product exists in Subscribe Pro and create if it doesn't
+			$exists = $this->spro_product_exists( $product, $sku );
 
-			$response = $client->get( SPRO_BASE_URL . '/services/v2/products.json?sku=' . $sku, [
-				'verify' => false,
-				'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
-			]);
-			
-			$response_body = json_decode( $response->getBody() );
-
-			// If product does not exist, create product
-			if ( empty( $response_body->products ) ) {
-
-				$name = get_the_title( $post_id );
-				$price = $product->get_price();
-
-				$data = array(
-					'access_token' => $access_token,
-					'product' => array(
-						'sku' => $sku,
-						'name' => $name,
-						'price' => $price
-					)
-				);
-
-				try {
-
-					$response = $client->request(
-						'POST',
-						SPRO_BASE_URL . '/services/v2/product.json',
-						[
-							'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
-							'verify' => false,
-							'json' => ['product' =>
-								array(
-									'sku' => $sku,
-									'name' => $name,
-									'price' => $price
-								)
-							]
-						]
-					);
-			
-					$response_body = json_decode( $response->getBody() );
-
-					session_start();
-
-					$_SESSION['admin_message'] = array(
-						'type' => 'updated',
-						'message' => 'Successfully created product #' . $response_body->product->id,
-					);
-	
-				} catch (RequestException $e) {
-
-					session_start();
-
-					$_SESSION['admin_message'] = array(
-						'type' => 'error',
-						'message' => $e->getMessage()
-					);
-
-					add_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
-
-				}
-
+			if ( !$exists ) {
+				$this->spro_create_product( $post_id );
 			}
 
 		}
@@ -430,6 +369,147 @@ class Spro_Admin {
 		<?php
 
 		unset( $_SESSION['admin_message'] );
+	}
+
+	/**
+	 * Bulk Edit Fields
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_bulk_edit_fields() {
+
+		$is_spro_product = get_post_meta( get_the_ID(), '_spro_product', true );
+
+		?>
+		<div class="inline-edit-group">
+			<label class="alignleft">
+				<span class="title" style="width: 11em;">Subscription Product?</span>
+				<input type="checkbox" class="checkbox" name="_spro_product" id="_spro_product" <?php echo $is_spro_product == 'yes' ? 'checked' : ''; ?>>
+			</label>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Bulk Edit Save
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_bulk_edit_save( $product ) {
+		
+		$post_id = $product->get_id();
+		$sku = $product->get_sku();
+
+	   if ( isset( $_REQUEST['_spro_product'] ) && $_REQUEST['_spro_product'] == 'on' ) {
+
+			$field = $_REQUEST['_spro_product'];
+			update_post_meta( $post_id, '_spro_product', 'yes' );
+
+			// Check if product exists in Subscribe Pro and create if it doesn't
+			$exists = $this->spro_product_exists( $product, $sku );
+
+			if ( !$exists ) {
+				$this->spro_create_product( $post_id );
+			}
+
+		} else {
+			
+			update_post_meta( $post_id, '_spro_product', 'no' );
+
+		}
+
+	}
+
+	/**
+	 * Check if a product exists in Subscribe Pro
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_product_exists( $sku ) {
+
+		$client = new Client();
+		$access_token = $this->spro_get_access_token();
+
+		$response = $client->get( SPRO_BASE_URL . '/services/v2/products.json?sku=' . $sku, [
+			'verify' => false,
+			'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+		]);
+		
+		$response_body = json_decode( $response->getBody() );
+
+		if ( empty( $response_body->products ) ) {
+
+			// Product Doesn't Exist
+			return false;
+		
+		} else {
+			
+			// Product Exists
+			return true;
+		}
+
+	}
+
+	public function spro_create_product( $post_id ) {
+
+		// If product does not exist, create product
+		$product = wc_get_product( $post_id );
+		$name = get_the_title( $post_id );
+		$price = $product->get_price();
+		$sku = $product->get_sku();
+
+		$client = new Client();
+		$access_token = $this->spro_get_access_token();
+
+		$data = array(
+			'access_token' => $access_token,
+			'product' => array(
+				'sku' => $sku,
+				'name' => $name,
+				'price' => $price
+			)
+		);
+
+		try {
+
+			$response = $client->request(
+				'POST',
+				SPRO_BASE_URL . '/services/v2/product.json',
+				[
+					'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+					'verify' => false,
+					'json' => ['product' =>
+						array(
+							'sku' => $sku,
+							'name' => $name,
+							'price' => $price
+						)
+					]
+				]
+			);
+	
+			$response_body = json_decode( $response->getBody() );
+
+			session_start();
+
+			$_SESSION['admin_message'] = array(
+				'type' => 'updated',
+				'message' => 'Successfully created product #' . $response_body->product->id,
+			);
+
+		} catch (RequestException $e) {
+
+			session_start();
+
+			$_SESSION['admin_message'] = array(
+				'type' => 'error',
+				'message' => $e->getMessage()
+			);
+
+			add_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
+
+		}
+
 	}
 
 }
