@@ -273,16 +273,23 @@ class Spro_Admin {
 
 			// Check if product exists within Subscribe Pro
 			$product = wc_get_product( $post_id );
-			$sku = '';
 
 			if ( isset( $_POST['_sku'] ) ) {
 				$sku = $_POST['_sku'];
 			}
 
 			// Check if product exists in Subscribe Pro and create if it doesn't
-			$exists = $this->spro_product_exists( $product, $sku );
+			$exists = $this->spro_product_exists( $sku );
 
-			if ( !$exists ) {
+			// Create new product or update product
+			if ( $exists != false ) {
+
+				$name = get_the_title( $post_id );
+				$price = $product->get_price();
+
+				$this->spro_update_product( $name, $price, $exists );
+			
+			} else {
 				$this->spro_create_product( $post_id );
 			}
 
@@ -399,6 +406,8 @@ class Spro_Admin {
 		
 		$post_id = $product->get_id();
 		$sku = $product->get_sku();
+		$name = get_the_title( $post_id );
+		$price = $product->get_price();
 
 	   if ( isset( $_REQUEST['_spro_product'] ) && $_REQUEST['_spro_product'] == 'on' ) {
 
@@ -406,9 +415,16 @@ class Spro_Admin {
 			update_post_meta( $post_id, '_spro_product', 'yes' );
 
 			// Check if product exists in Subscribe Pro and create if it doesn't
-			$exists = $this->spro_product_exists( $product, $sku );
+			$exists = $this->spro_product_exists( $sku );
 
-			if ( !$exists ) {
+			// Create new product or update product
+			if ( $exists != false ) {
+
+				$name = get_the_title( $post_id );
+				$price = $product->get_price();
+
+				$this->spro_update_product( $name, $price, $exists );
+			} else {
 				$this->spro_create_product( $post_id );
 			}
 
@@ -445,11 +461,16 @@ class Spro_Admin {
 		} else {
 			
 			// Product Exists
-			return true;
+			return $response_body->products[0]->id;
 		}
 
 	}
 
+	/**
+	 * Create a Subscribe Pro Product
+	 * 
+	 * @since 1.0.0
+	 */
 	public function spro_create_product( $post_id ) {
 
 		// If product does not exist, create product
@@ -460,15 +481,6 @@ class Spro_Admin {
 
 		$client = new Client();
 		$access_token = $this->spro_get_access_token();
-
-		$data = array(
-			'access_token' => $access_token,
-			'product' => array(
-				'sku' => $sku,
-				'name' => $name,
-				'price' => $price
-			)
-		);
 
 		try {
 
@@ -495,6 +507,57 @@ class Spro_Admin {
 			$_SESSION['admin_message'] = array(
 				'type' => 'updated',
 				'message' => 'Successfully created product #' . $response_body->product->id,
+			);
+
+		} catch (RequestException $e) {
+
+			session_start();
+
+			$_SESSION['admin_message'] = array(
+				'type' => 'error',
+				'message' => $e->getMessage()
+			);
+
+			add_filter( 'redirect_post_location', array( $this, 'add_notice_query_var' ), 99 );
+
+		}
+
+	}
+
+	/**
+	 * Update a Subscribe Pro Product
+	 * 
+	 * @since 1.0.0
+	 */
+	public function spro_update_product( $name, $price, $id ) {
+
+		$client = new Client();
+		$access_token = $this->spro_get_access_token();
+
+		try {
+
+			$response = $client->request(
+				'POST',
+				SPRO_BASE_URL . '/services/v2/products/' . $id,
+				[
+					'auth' => [SPRO_CLIENT_ID, SPRO_CLIENT_SECRET],
+					'verify' => false,
+					'json' => ['product' =>
+						array(
+							'name' => $name,
+							'price' => $price
+						)
+					]
+				]
+			);
+	
+			$response_body = json_decode( $response->getBody() );
+
+			session_start();
+
+			$_SESSION['admin_message'] = array(
+				'type' => 'updated',
+				'message' => 'Successfully updated product #' . $response_body->product->id,
 			);
 
 		} catch (RequestException $e) {
