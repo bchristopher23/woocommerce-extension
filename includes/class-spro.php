@@ -205,6 +205,9 @@ class Spro {
 		$this->loader->add_action( 'woocommerce_product_bulk_edit_start', $plugin_admin, 'spro_bulk_edit_fields' );
 		$this->loader->add_action( 'woocommerce_product_bulk_edit_save', $plugin_admin, 'spro_bulk_edit_save' );
 
+		// Product Sync Update
+		// $this->loader->add_action( 'init', $plugin_admin, 'update_sp_product' );
+
 	}
 
 	/**
@@ -235,6 +238,9 @@ class Spro {
 		$this->loader->add_action( 'woocommerce_cart_calculate_fees', $plugin_public, 'spro_apply_discount', 10, 1 );
 		$this->loader->add_action( 'template_redirect', $plugin_public, 'spro_checkout_redirect', 10, 1 );
 		$this->loader->add_action( 'woocommerce_update_cart_action_cart_updated', $plugin_public, 'spro_cart_updated', 10, 1 );
+		
+		// Remove unwanted line items from WooCommerce Emails
+		$this->loader->add_filter( 'woocommerce_order_item_get_formatted_meta_data', $plugin_public, 'spro_unset_email_data', 10, 2 );
 
 		// WooCommerce Payment Complete
 		$this->loader->add_action( 'woocommerce_thankyou', $plugin_public, 'spro_payment_complete' );

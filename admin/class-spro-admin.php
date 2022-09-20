@@ -297,6 +297,62 @@ class Spro_Admin {
 
 	}
 
+	// public function update_sp_product() {
+
+	// 	$current_user = wp_get_current_user();
+	// 	$login = $current_user->user_login;
+
+	// 	if ( $login === 'grayson' ) {
+
+	// 		$args = array(
+	// 			'posts_per_page' => 10,
+	// 			'paged' => 16,
+	// 			'post_type' => 'product',
+	// 			'meta_query' => array(
+	// 				array (
+	// 					'key'     => '_spro_product',
+	// 					'value'   => true,
+	// 					'compare' => '='
+	// 				)
+	// 			),
+	// 		);
+			
+	// 		$products = wc_get_products( $args );
+	
+	// 		foreach( $products as $product ) {
+	
+	// 			// Clear product cache
+	// 			delete_transient( $product->get_id() . '_spro_product' );
+	
+	// 			// Check if product exists within Subscribe Pro
+	// 			$product = wc_get_product( $product->get_id() );
+
+	// 			$sku = $product->get_sku();
+
+	// 			// Check if product exists in Subscribe Pro and create if it doesn't
+	// 			$exists = $this->spro_product_exists( $sku );
+	
+	// 			// Create new product or update product
+	// 			if ( $exists != false ) {
+	
+	// 				$name = get_the_title( $product->get_id() );
+	// 				$price = $product->get_price();
+	
+	// 				$this->spro_update_product( $name, $price, $exists );
+	
+	// 				echo 'updated product ' . $product->get_id() . '<br>';
+				
+	// 			} else {
+	// 				$this->spro_create_product( $product->get_id() );
+	// 				echo 'created product ' . $product->get_id() . '<br>';
+	
+	// 			}
+	// 		}
+	// 	}
+
+	// }
+
+
 	/**
 	 * Retrieves Access Token
 	 * 

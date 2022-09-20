@@ -153,7 +153,7 @@ if ( ! defined( 'WPINC' ) ) die;
 
     <script type="text/javascript">
 
-        jQuery(function($){
+        jQuery(function($) {
 
             jQuery('.spro-input').each(function() {
 
@@ -180,16 +180,22 @@ if ( ! defined( 'WPINC' ) ) die;
                 }
 
                 // Make AJAX Request
-                wp.ajax.post( "save_connection_credentials", { 'val': val, 'name': name } )
-                .done(function(response) {
+                $.ajax({
+                    type: "POST",
+                    dataType: "json",
+                    url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                    data: { action: 'save_connection_credentials', 'val': val, 'name': name },
+                    success: function(response) {
 
-                    var name = jQuery.parseJSON( response ).name,
+                        var data = jQuery.parseJSON(response.data);
+
+                        var name = data.name,
                         label = jQuery( 'label[for="' + name + '"]' ).contents().get(0).nodeValue;
 
-                    jQuery('.connection-message').addClass('success').removeClass('fail').show();
-                    jQuery('.connection-message').html( '<span class="name">' + label + '</span> was saved!');
-
-
+                        jQuery('.connection-message').addClass('success').removeClass('fail').show();
+                        jQuery('.connection-message').html( '<span class="name">' + label + '</span> was saved!');
+                    
+                    }
                 });
 
             });
@@ -202,20 +208,27 @@ if ( ! defined( 'WPINC' ) ) die;
                 jQuery(this).text('Testing....');
 
                 // Make AJAX Request
-                wp.ajax.post( "test_connection", {} )
-                .done(function(response) {
+                $.ajax({
+                    type: "POST",
+                    dataType: "json",
+                    url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                    data: { action: 'test_connection' },
+                    success: function(response) {
+
+                        console.log('response');
+                        console.log(response);
+
+                        if (response.data == 'success') {
+                            jQuery('.connection-message').addClass('success').removeClass('fail');
+                            jQuery('.connection-message').text('Connection successful!');
+                        } else {
+                            jQuery('.connection-message').addClass('fail').removeClass('success');
+                            jQuery('.connection-message').text('Connection failed!');
+                        }
+
+                        jQuery('.test-con-btn').text('Test Connection');
                     
-                    if (response == 'success') {
-                        jQuery('.connection-message').addClass('success').removeClass('fail');
-                        jQuery('.connection-message').text('Connection successful!');
-                    } else {
-                        jQuery('.connection-message').addClass('fail').removeClass('success');
-                        jQuery('.connection-message').text('Connection failed!');
                     }
-
-
-                    jQuery('.test-con-btn').text('Test Connection');
-
                 });
 
             });

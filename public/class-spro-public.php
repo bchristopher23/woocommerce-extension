@@ -275,12 +275,10 @@ class Spro_Public {
 			$cart_item_data['delivery_frequency'] = $_POST['delivery_frequency'];
 		}
 		
-		if( ! empty( $_POST['delivery_discount'] ) && ! empty( $_POST['delivery_type'] ) ) {
+		if( ! empty( $_POST['delivery_discount'] ) ) {
 
 			// Add the item data
-			if ( $_POST['delivery_type'] == 'regular' ) {
-				$cart_item_data['delivery_discount'] = $_POST['delivery_discount'];
-			}
+			$cart_item_data['delivery_discount'] = $_POST['delivery_discount'];
 
 		}
 
@@ -302,15 +300,17 @@ class Spro_Public {
 		}
 
 		$fee = 0;
-
+		
 		// Loop through cart items
 		foreach ( $cart->get_cart() as $cart_item ) {
 
 			if( isset( $cart_item['delivery_discount'] ) ) {
 				
 				$discount = intval( $cart_item['delivery_discount'] );
+				$type = isset( $cart_item['delivery_type'] ) ? $cart_item['delivery_type'] : '';
 
-				if ( $discount != '' ) {
+
+				if ( $discount != '' && $type == 'regular' ) {
 
 					$price = get_post_meta( $cart_item['product_id'] , '_price', true );
 					$quantity = $cart_item['quantity'];
@@ -319,13 +319,31 @@ class Spro_Public {
 
 					$fee += ( $discount_fee * $quantity );
 
+					// Add tax back in that was removed from the discount
+					// $new_price_after_discount = $price - $discount_fee;
+					// $tax_before_fee = $price * .08;
+
+					// $tax_after_fee = $new_price_after_discount * .08;
+
+					// $tax_difference = ($tax_before_fee - $tax_after_fee) * $quantity;
+
 				}
 				
 			}
 		}
 
 		if ( $fee > 0 ) {
-			$cart->add_fee( __( "Discount for subscription", "woocommerce" ), - $fee );
+
+			// Add the tax back in if from CA
+			// $user_state = WC()->customer->get_shipping_state();
+
+			// if ( $user_state === 'CA' ) {
+			// 	$cart->add_fee( __( "Tax Fee", "woocommerce" ), $tax_difference, false );
+			// }
+
+			// Add the discount
+			$cart->add_fee( __( "Discount for subscription", "woocommerce" ), - $fee, false );
+
 		}
 
 	}
@@ -338,18 +356,27 @@ class Spro_Public {
 	public function spro_add_custom_data_to_order( $item, $cart_item_key, $values, $order ) {
 
 		foreach( $item as $cart_item_key=>$values ) {
+
+			$delivery_type = '';
+
 			if( isset( $values['delivery_type'] ) ) {
-				$item->add_meta_data( __( 'Delivery Type', 'spro' ), $values['delivery_type'], true );
-			}
 
-			if( isset( $values['delivery_frequency'] ) ) {
-				$item->add_meta_data( __( 'Delivery Frequency', 'spro' ), $values['delivery_frequency'], true );
-			}
+				$delivery_type = $values['delivery_type'];
+				$item->add_meta_data( __( 'Delivery Type', 'spro' ), $delivery_type, true );
 			
-			if( isset( $values['delivery_discount'] ) ) {
-
-				$item->add_meta_data( __( 'Delivery Discount', 'spro' ), $values['delivery_discount'], true );
 			}
+
+			if ( $delivery_type == 'regular' ) {
+				if( isset( $values['delivery_frequency'] ) ) {
+					$item->add_meta_data( __( 'Delivery Frequency', 'spro' ), $values['delivery_frequency'], true );
+				}
+				
+				if( isset( $values['delivery_discount'] ) ) {
+	
+					$item->add_meta_data( __( 'Delivery Discount', 'spro' ), $values['delivery_discount'], true );
+				}
+			}
+
 		}
 
 	}
@@ -394,8 +421,17 @@ class Spro_Public {
 		// loop over the cart
 		foreach( $contents as $key => $values ) {
 
-			$contents[$key]['delivery_type'] = $_POST['cart'][$key]['delivery_type'];
-			$contents[$key]['delivery_frequency'] = $_POST['cart'][$key]['delivery_frequency'];
+			if ( isset( $_POST['cart'][$key]['delivery_type'] ) ) {
+				$contents[$key]['delivery_type'] = $_POST['cart'][$key]['delivery_type'];
+			}
+
+			if ( isset( $_POST['cart'][$key]['delivery_frequency'] ) ) {
+				$contents[$key]['delivery_frequency'] = $_POST['cart'][$key]['delivery_frequency'];
+			}
+
+			if ( isset( $_POST['cart'][$key]['delivery_discount'] ) ) {
+				$contents[$key]['delivery_discount'] = $_POST['cart'][$key]['delivery_discount'];
+			}
 
 		}
 
@@ -412,7 +448,7 @@ class Spro_Public {
 	 */
 	public function spro_get_access_token() {
 
-		// delete_transient( 'spro_access_token' );
+		delete_transient( 'spro_access_token' );
 
 		if ( false === ( $value = get_transient( 'spro_access_token' ) ) ) {
 			
@@ -462,7 +498,7 @@ class Spro_Public {
 
 		$product_id = wc_get_product_id_by_sku( $sku );
 
-		// delete_transient( $product_id . '_spro_product' );
+		delete_transient( $product_id . '_spro_product' );
 
 		if ( false === ( get_transient( $product_id . '_spro_product' ) ) ) {
 
@@ -906,8 +942,10 @@ class Spro_Public {
 				array_push( $item_error_array, $error_array );
 
 			} else {
+
 				$order->add_product( $product, $qty );
 				array_push( $subscription_ids, strval( $item['subscription']['id'] ) );	
+			
 			}
 
 		}
@@ -923,6 +961,9 @@ class Spro_Public {
 			## Using WC_Order_Item_Product methods ##
 			$product = $item->get_product(); // Get the WC_Product object
 			
+			// Add delivery type
+			$item->add_meta_data( __( 'Delivery Type', 'spro' ), 'regular', true );
+
 			// Item Data
 			$sku = $product->get_sku();
 			$product_id = wc_get_product_id_by_sku( $sku );
@@ -959,9 +1000,9 @@ class Spro_Public {
 		}
 
 		// Add shipping to order
-		// $shipping_item = new WC_Order_Item_Shipping();
-		// $shipping_item->set_method_id( $order_data['shippingMethodCode'] );
-		// $order->add_item( $shipping_item );
+		$shipping_item = new WC_Order_Item_Shipping();
+		$shipping_item->set_method_id( $order_data['shippingMethodCode'] );
+		$order->add_item( $shipping_item );
 
 		// Calculate totals
 		$order->calculate_totals();
@@ -1498,6 +1539,18 @@ class Spro_Public {
 
 		return $return_data;
 
+	}
+
+	function spro_unset_email_data($formatted_meta, $item){
+		// Only on emails notifications
+		if( is_admin() || is_wc_endpoint_url() )
+			return $formatted_meta;
+	
+		foreach( $formatted_meta as $key => $meta ) {
+			if( in_array( $meta->key, array('Delivery Type', 'spro_subscription_id') ) )
+				unset($formatted_meta[$key]);
+		}
+		return $formatted_meta;
 	}
 
 }

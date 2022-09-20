@@ -186,6 +186,156 @@ do_action( 'woocommerce_before_cart' ); ?>
 							?>
 						</td>
 
+<<<<<<< Updated upstream
+=======
+						<td class="product-thumbnail">
+						<?php
+						$thumbnail = apply_filters( 'woocommerce_cart_item_thumbnail', $_product->get_image(), $cart_item, $cart_item_key );
+
+						if ( ! $product_permalink ) {
+							echo $thumbnail; // PHPCS: XSS ok.
+						} else {
+							printf( '<a href="%s">%s</a>', esc_url( $product_permalink ), $thumbnail ); // PHPCS: XSS ok.
+						}
+						?>
+						</td>
+
+						<td class="product-name" data-title="<?php esc_attr_e( 'Product', 'woocommerce' ); ?>">
+						<?php
+
+						if ( ! $product_permalink ) {
+							echo wp_kses_post( apply_filters( 'woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key ) . '&nbsp;' );
+						} else {
+							echo wp_kses_post( apply_filters( 'woocommerce_cart_item_name', sprintf( '<a href="%s">%s</a>', esc_url( $product_permalink ), $_product->get_name() ), $cart_item, $cart_item_key ) );
+						}
+
+						do_action( 'woocommerce_after_cart_item_name', $cart_item, $cart_item_key );
+
+						// Meta data.
+						echo wc_get_formatted_cart_item_data( $cart_item ); // PHPCS: XSS ok.
+
+						// Backorder notification.
+						if ( $_product->backorders_require_notification() && $_product->is_on_backorder( $cart_item['quantity'] ) ) {
+							echo wp_kses_post( apply_filters( 'woocommerce_cart_item_backorder_notification', '<p class="backorder_notification">' . esc_html__( 'Available on backorder', 'woocommerce' ) . '</p>', $product_id ) );
+						}
+                        
+                        if ( isset( $cart_item['delivery_type'] ) ): ?>
+
+                            <div class="cart-field-group delivery-group">
+                                <label for="cart[<?php echo $cart_item_key; ?>][delivery_type]">Delivery Type:&nbsp;&nbsp;</label>
+                                <select name="cart[<?php echo $cart_item_key; ?>][delivery_type]" class="delivery-type-select">
+                                    <option value="one_time" <?php echo $cart_item['delivery_type'] == 'one_time' ? 'selected' : ''; ?>>One Time</option>
+                                    <option value="regular" <?php echo $cart_item['delivery_type'] == 'regular' ? 'selected' : ''; ?>> Regular</option>
+                                </select>
+                            </div>
+
+                            <script type="text/javascript">
+
+                                (function() {
+
+                                    jQuery('.delivery-type-select').change(function() {
+
+                                        if ( jQuery(this).val() == 'regular' ) {
+                                            jQuery('.frequency-group').show();
+                                        } else {
+                                            jQuery('.frequency-group').hide();
+                                        }
+
+                                    });
+
+                                })();
+
+                            </script>
+
+                        <?php endif; ?>
+                        
+                        <?php if ( isset( $cart_item['delivery_frequency'] ) ): ?>
+
+                            <div class="cart-field-group frequency-group" <?php echo $cart_item['delivery_type'] == 'one_time' ? 'style="display: none;"' : ''; ?>>
+                                <label for="delivery_frequency">Delivery Frequency:&nbsp;&nbsp;</label>
+                                <select name="cart[<?php echo $cart_item_key; ?>][delivery_frequency]" class="frequency-select">
+
+                                    <?php
+                                    require_once( SPRO_PLUGIN_DIR . '/public/class-spro-public.php' );
+
+                                    $public = new Spro_Public( 'spro', SPRO_VERSION );
+
+                                    $response_body = $public->spro_get_product( $_product->get_sku() );
+                                    $intervals = $response_body[0]->intervals;
+
+                                    foreach ( $intervals as $interval ): ?>
+                                        <option value="<?php echo $interval; ?>" <?php echo $cart_item['delivery_frequency'] == $interval ? 'selected' : ''; ?>><?php echo $interval; ?></option>
+                                    <?php endforeach; ?>
+
+                                </select>
+                            </div>
+
+                        <?php endif; ?>
+
+						<script type="text/javascript">
+
+							(function() {
+
+								updateCart();
+
+								jQuery( document.body ).on( 'updated_cart_totals', function(){
+									updateCart();
+								});
+
+								function updateCart() {
+
+									console.log('change');
+
+									jQuery('.delivery-type-select, .frequency-select').change(function() {
+
+										jQuery('button[name="update_cart"]').removeAttr('disabled');
+										jQuery('button[name="update_cart"]').trigger('click');
+
+									});
+								}
+
+
+
+							})();
+
+						</script>
+
+						</td>
+
+						<td class="product-price" data-title="<?php esc_attr_e( 'Price', 'woocommerce' ); ?>">
+							<?php
+								echo apply_filters( 'woocommerce_cart_item_price', WC()->cart->get_product_price( $_product ), $cart_item, $cart_item_key ); // PHPCS: XSS ok.
+							?>
+						</td>
+
+						<td class="product-quantity" data-title="<?php esc_attr_e( 'Quantity', 'woocommerce' ); ?>">
+						<?php
+						if ( $_product->is_sold_individually() ) {
+							$product_quantity = sprintf( '1 <input type="hidden" name="cart[%s][qty]" value="1" />', $cart_item_key );
+						} else {
+							$product_quantity = woocommerce_quantity_input(
+								array(
+									'input_name'   => "cart[{$cart_item_key}][qty]",
+									'input_value'  => $cart_item['quantity'],
+									'max_value'    => $_product->get_max_purchase_quantity(),
+									'min_value'    => '0',
+									'product_name' => $_product->get_name(),
+								),
+								$_product,
+								false
+							);
+						}
+
+						echo apply_filters( 'woocommerce_cart_item_quantity', $product_quantity, $cart_item_key, $cart_item ); // PHPCS: XSS ok.
+						?>
+						</td>
+
+						<td class="product-subtotal" data-title="<?php esc_attr_e( 'Subtotal', 'woocommerce' ); ?>">
+							<?php
+								echo apply_filters( 'woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal( $_product, $cart_item['quantity'] ), $cart_item, $cart_item_key ); // PHPCS: XSS ok.
+							?>
+						</td>
+>>>>>>> Stashed changes
 					</tr>
 					<?php
 				}
@@ -194,7 +344,11 @@ do_action( 'woocommerce_before_cart' ); ?>
 
 			<?php do_action( 'woocommerce_cart_contents' ); ?>
 
+<<<<<<< Updated upstream
 			<tr class="avada-cart-actions">
+=======
+			<tr style="display: none;">
+>>>>>>> Stashed changes
 				<td colspan="6" class="actions">
 
 					<?php if ( wc_coupons_enabled() ) { ?>

@@ -9,14 +9,14 @@
  * that starts the plugin.
  *
  * @link              https://www.subscribepro.com/
- * @since             1.0.0
+ * @since             1.1.0
  * @package           Spro
  *
  * @wordpress-plugin
  * Plugin Name:       Subscribe Pro
  * Plugin URI:        https://www.subscribepro.com/
  * Description:       A plugin for connecting Subscribe Pro to WooCommerce.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Author:            Brady Christopher
  * Author URI:        https://www.subscribepro.com/
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SPRO_VERSION', '1.0.0' );
+define( 'SPRO_VERSION', '1.1.0' );
 
 /**
  * Define plugin directory constant
@@ -104,8 +104,64 @@ function sp_locate_template( $template, $template_name, $template_path ) {
 	if( $basename == 'cart.php' ) {
 		$template = trailingslashit( plugin_dir_path( __FILE__ ) ) . 'templates/woocommerce/cart/cart.php';
 	}
+	
+	// if( $basename == 'cart-totals.php' ) {
+	// 	$template = trailingslashit( plugin_dir_path( __FILE__ ) ) . 'templates/woocommerce/cart/cart-totals.php';
+	// }
+
+	// if( $basename == 'form-checkout.php' ) {
+	// 	$template = trailingslashit( plugin_dir_path( __FILE__ ) ) . 'templates/woocommerce/checkout/form-checkout.php';
+	// }
 
 	return $template;
 
 }
 add_filter( 'woocommerce_locate_template', 'sp_locate_template', 10, 3 );
+
+// add_action('init', 'spro_run_import');
+
+// function spro_run_import() {
+
+// 	$csv = '';
+
+// 	$current_user = wp_get_current_user();
+// 	$login = $current_user->user_login;
+
+// 	if ( $login === 'grayson' ) {
+
+// 		echo 'found user';
+		
+// 		$filepath = plugin_dir_path( __FILE__ ) . '/export.csv';
+
+// 		$csvdata = file_get_contents($filepath);
+// 		$lines = explode("\n", $csvdata); // split data by new lines
+// 		foreach ($lines as $i => $line) {
+// 			$values = explode(',', $line); // split lines by comma
+		
+// 			$spro_customer_id = isset($values[6]) ? str_replace('"', "", $values[6] ) : '';
+// 			$email = isset($values[10]) ? str_replace('"', "", $values[10] ) : '';
+
+// 			$wpuser = get_user_by( 'email', $email );
+
+// 			if ( $wpuser ) {
+
+// 				$current_spro_id = get_user_meta( $wpuser->ID, 'spro_id', true );
+
+// 				// if ( $current_spro_id == '') {
+
+// 					echo $email . '<br>';
+
+// 					update_user_meta($wpuser->ID, 'spro_id', $spro_customer_id );
+
+// 					echo 'updated id to: <br>';
+// 					echo get_user_meta( $wpuser->ID, 'spro_id', true );
+// 				// }
+// 			}
+
+
+// 		}
+
+
+// 	}
+
+// }
