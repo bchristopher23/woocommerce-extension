@@ -116,8 +116,7 @@ class Spro_Public {
 		?>
 	
 		<h2>My Subscriptions</h2>
-		<a href="https://kerstinflorian.com/auto-replenish-faq/" style="display: block; text-decoration: underline; font-size: 18px;" target="_blank">Auto Replenish FAQ</a>
-
+	
 		<div class="content">
 			<!-- My Subscriptions Widget div goes in main body of page -->
 			<div id="sp-my-subscriptions"></div>
@@ -309,41 +308,17 @@ class Spro_Public {
 				$discount = intval( $cart_item['delivery_discount'] );
 				$type = isset( $cart_item['delivery_type'] ) ? $cart_item['delivery_type'] : '';
 
-
 				if ( $discount != '' && $type == 'regular' ) {
 
-					$price = get_post_meta( $cart_item['product_id'] , '_price', true );
-					$quantity = $cart_item['quantity'];
+					$coupon = 'sub_discount_15';
 
-					$discount_fee = ( $discount / 100 ) * $price;
-
-					$fee += ( $discount_fee * $quantity );
-
-					// Add tax back in that was removed from the discount
-					// $new_price_after_discount = $price - $discount_fee;
-					// $tax_before_fee = $price * .08;
-
-					// $tax_after_fee = $new_price_after_discount * .08;
-
-					// $tax_difference = ($tax_before_fee - $tax_after_fee) * $quantity;
-
+					if(!in_array($coupon, $cart->get_applied_coupons())){
+						$cart->apply_coupon( 'sub_discount_15' );
+					}
+					
 				}
 				
 			}
-		}
-
-		if ( $fee > 0 ) {
-
-			// Add the tax back in if from CA
-			// $user_state = WC()->customer->get_shipping_state();
-
-			// if ( $user_state === 'CA' ) {
-			// 	$cart->add_fee( __( "Tax Fee", "woocommerce" ), $tax_difference, false );
-			// }
-
-			// Add the discount
-			$cart->add_fee( __( "Discount for subscription", "woocommerce" ), - $fee, false );
-
 		}
 
 	}
@@ -541,6 +516,14 @@ class Spro_Public {
 		if ( !is_user_logged_in() ) {
 			return;
 		}
+
+		// Checking if this has already been done to avoid duplicate orders
+		if( get_post_meta( $order_id, 'spro_order_complete', true ) ) {
+			return; // Exit if already processed
+		}
+
+		// Mark order complete to prevent processing the order again
+		update_post_meta( $order_id, 'spro_order_complete', true );
 
 		// Get Order Info
 		$order = wc_get_order( $order_id );
@@ -999,9 +982,15 @@ class Spro_Public {
 
 		}
 
+		// Add discount coupon
+		$coupon = 'sub_discount_15';
+		$order->apply_coupon($coupon);
+
 		// Add shipping to order
 		$shipping_item = new WC_Order_Item_Shipping();
-		$shipping_item->set_method_id( $order_data['shippingMethodCode'] );
+		$shipping_item->set_method_title( "Free Ground Shipping" );
+		$shipping_item->set_method_id( 'flat_rate' );
+		$shipping_item->set_total( 0 );
 		$order->add_item( $shipping_item );
 
 		// Calculate totals
@@ -1551,6 +1540,18 @@ class Spro_Public {
 				unset($formatted_meta[$key]);
 		}
 		return $formatted_meta;
+	}
+
+	/**
+	 * Exclude coupons from subscription products if one time delivery is selected
+	 */
+	function spro_exclude_coupon( $valid, $product, $coupon, $values ) {
+		if ( $values['delivery_type'] === 'one_time' ) {
+			$valid = false;
+		} else {
+			$valid = true;
+		}
+		return $valid;
 	}
 
 }

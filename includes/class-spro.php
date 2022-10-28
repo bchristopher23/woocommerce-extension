@@ -247,6 +247,11 @@ class Spro {
 
 		// Create Order Endpoint
 		$this->loader->add_action( 'rest_api_init', $plugin_public, 'spro_rest_init' );
+
+		// Exclude Coupons from one time delivery products
+		$this->loader->add_filter( 'woocommerce_coupon_is_valid_for_product', $plugin_public, 'spro_exclude_coupon', 10, 4 );
+
+
 	}
 
 	/**
